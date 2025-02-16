@@ -28,7 +28,7 @@ interface IAddressesRegistry {
         IStabilityPool stabilityPool;
         IPriceFeed priceFeed;
         IActivePool activePool;
-        IDefaultPool defaultPool;
+        IDefaultPool defaultPool; //
         address gasPoolAddress;
         ICollSurplusPool collSurplusPool;
         ISortedTroves sortedTroves;

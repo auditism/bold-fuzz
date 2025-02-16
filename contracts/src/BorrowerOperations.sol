@@ -21,7 +21,7 @@ contract BorrowerOperations is LiquityBase, AddRemoveManagers, IBorrowerOperatio
     // --- Connected contract declarations ---
 
     IERC20 internal immutable collToken;
-    ITroveManager internal troveManager;
+    ITroveManager public troveManager;
     address internal gasPoolAddress;
     ICollSurplusPool internal collSurplusPool;
     IBoldToken internal boldToken;
@@ -214,7 +214,7 @@ contract BorrowerOperations is LiquityBase, AddRemoveManagers, IBorrowerOperatio
             _collAmount,
             _boldAmount,
             _annualInterestRate,
-            address(0),
+            address(0), //@note interestBatch
             0,
             0,
             _maxUpfrontFee,
@@ -671,7 +671,7 @@ contract BorrowerOperations is LiquityBase, AddRemoveManagers, IBorrowerOperatio
         ITroveManager troveManagerCached = troveManager;
         IActivePool activePoolCached = activePool;
         IBoldToken boldTokenCached = boldToken;
-
+        
         // --- Checks ---
 
         address owner = troveNFT.ownerOf(_troveId);
@@ -834,7 +834,7 @@ contract BorrowerOperations is LiquityBase, AddRemoveManagers, IBorrowerOperatio
         return interestBatchManagers[_account];
     }
 
-    function registerBatchManager(
+    function registerBatchManager( //wait no access contol ? 
         uint128 _minInterestRate,
         uint128 _maxInterestRate,
         uint128 _currentInterestRate,
@@ -1018,6 +1018,7 @@ contract BorrowerOperations is LiquityBase, AddRemoveManagers, IBorrowerOperatio
             _troveId, BatchId.wrap(_newBatchManager), vars.newBatch.annualInterestRate, _upperHint, _lowerHint
         );
     }
+
 
     function removeFromBatch(
         uint256 _troveId,
