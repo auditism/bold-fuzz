@@ -3,69 +3,40 @@ pragma solidity ^0.8.0;
 
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {BORaw} from "./borrowerOperationsRaw/BORaw.sol";
+import {BOHelpers} from "./BOHelpers.sol";
 import {IBorrowerOperations} from "src/Interfaces/IBorrowerOperations.sol";
-import {Properties} from "./../../Properties.sol";
 import {vm} from "@chimera/Hevm.sol";
 
-abstract contract BOClamped is BORaw {
+abstract contract BOClamped is BORaw, BOHelpers {
     /**
      * Here we clamp the _annualInterestRate
      */
-    function clamped_open_trove(
-        uint256 _ownerIndex,
-        uint256 _collAmount,
-        uint256 _boldAmount,
-        uint256 _upperHint,
-        uint256 _lowerHint,
-        uint128 _annualInterestRate,
-        uint256 _maxUpfrontFee,
-        address _addManager,
-        address _removeManager,
-        address _receiver
-    ) public {
+    function clamped_open_trove(uint256 _collAmount, uint256 _boldAmount, uint128 _annualInterestRate)
+        public
+        returns (uint256)
+    {
         _annualInterestRate = _fix_interest_rate(_annualInterestRate);
         _collAmount %= collateral.balanceOf(currentUser) + 1;
-        uint256 trove = BO_openTrove(
-            _ownerIndex,
-            _collAmount,
-            _boldAmount,
-            _upperHint,
-            _lowerHint,
-            uint256(_annualInterestRate),
-            _maxUpfrontFee,
-            _addManager,
-            _removeManager,
-            _receiver
-        );
+        uint256 trove = BO_openTrove(_collAmount, _boldAmount, uint256(_annualInterestRate));
         activeTroves.push(trove);
+        normalTroves.push(trove);
+        mixedTroves.push(trove);
+        return trove;
     }
 
-    function clamped_addCol(uint256 amt) public {
-        amt %= collateral.balanceOf(msg.sender) + 1;
-        BO_addColl(amt);
-        t(false, 'QnD');
-    }
+    function clamped_openTroveAndJoinInterestBatchManager(uint256 collAmount, uint256 boldAmount) public {
+        IBorrowerOperations.OpenTroveAndJoinInterestBatchManagerParams memory _params =
+            _return_batch_open_trove_params(collAmount, boldAmount);
+        BO_openTroveAndJoinInterestBatchManager(_params);
 
-    function clamped_adjustTrove(
-        uint256 _collChange,
-        bool _isCollIncrease,
-        uint256 _boldChange,
-        bool _isDebtIncrease,
-        uint256 _maxUpfrontFee
-    ) public {
-        BO_adjustTrove(_collChange, _isCollIncrease, _boldChange, _isDebtIncrease, _maxUpfrontFee);
     }
 
     // NOTE caller is owner, but should create option where caller is interestManager
-    function clamped_adjustTroveInterestRate(
-        uint128 _newAnnualInterestRate,
-        uint256 _upperHint,
-        uint256 _lowerHint,
-        uint256 _maxUpfrontFee
-    ) public {
+    function clamped_adjustTroveInterestRate(uint128 _newAnnualInterestRate) public {
         _newAnnualInterestRate = _fix_interest_rate(_newAnnualInterestRate);
-        BO_adjustTroveInterestRate(uint256(_newAnnualInterestRate), _upperHint, _lowerHint, _maxUpfrontFee);
-        // should manage to go through
+        uint256 _maxUpfrontFee =
+            hintHelpers.predictAdjustInterestRateUpfrontFee(0, currentTrove, _newAnnualInterestRate);
+        BO_adjustTroveInterestRate(uint256(_newAnnualInterestRate), _maxUpfrontFee);
     }
 
     //NOTE //msg.sender is batch manager
@@ -78,78 +49,127 @@ abstract contract BOClamped is BORaw {
     ) public {
         _minInterestRate = _fix_interest_rate(_minInterestRate);
         _maxInterestRate = _fix_interest_rate(_maxInterestRate);
-        if (_minInterestRate > _maxInterestRate) {
-            (_minInterestRate, _maxInterestRate) = (_maxInterestRate, _minInterestRate);
-        } // hope this works ..
-        _currentInterestRate =
-            _currentInterestRate > _maxInterestRate ? _currentInterestRate % _maxInterestRate : _currentInterestRate; //is this ok ?
-        _currentInterestRate = _currentInterestRate < _minInterestRate ? _minInterestRate + 1 : _currentInterestRate;
+        (_minInterestRate, _maxInterestRate, _minInterestRateChangePeriod) = _fix_max_min_interest(
+            _minInterestRate, _maxInterestRate, uint128(_currentInterestRate), _minInterestRateChangePeriod
+        );
 
         BO_registerBatchManager(
             _minInterestRate, _maxInterestRate, _currentInterestRate, _annualManagementFee, _minInterestRateChangePeriod
         );
+        batchManagers.push(users[randomUnit]);
     }
 
-    //NOTE should delegate be an address ?
-
     function clamped_setInterestIndividualDelegate(
-        address _delegate,
         uint128 _minInterestRate,
         uint128 _maxInterestRate,
-        uint256 _newAnnualInterestRate,
-        uint256 _upperHint,
-        uint256 _lowerHint,
-        uint256 _maxUpfrontFee,
-        uint256 _minInterestRateChangePeriod
+        uint128 _newAnnualInterestRate,
+        uint256 _maxUpfrontFee, //NOTE I CAN REMOVE THIS ?
+        uint128 _minInterestRateChangePeriod
     ) public {
+        address delegate = _return_random_User();
         _minInterestRate = _fix_interest_rate(_minInterestRate);
         _maxInterestRate = _fix_interest_rate(_maxInterestRate);
-        if (_minInterestRate > _maxInterestRate) {
-            (_minInterestRate, _maxInterestRate) = (_maxInterestRate, _minInterestRate);
-        }
 
-        _newAnnualInterestRate = _newAnnualInterestRate > _maxInterestRate
-            ? _newAnnualInterestRate % _maxInterestRate
-            : _newAnnualInterestRate; //is this ok ?
-        _newAnnualInterestRate =
-            _newAnnualInterestRate < _minInterestRate ? _minInterestRate + 1 : _newAnnualInterestRate;
+        (_minInterestRate, _maxInterestRate, _minInterestRateChangePeriod) = _fix_max_min_interest(
+            _minInterestRate, _maxInterestRate, _newAnnualInterestRate, _minInterestRateChangePeriod
+        );
         BO_setInterestIndividualDelegate(
-            _delegate,
+            delegate,
             _minInterestRate,
             _maxInterestRate,
             _newAnnualInterestRate,
-            _upperHint,
-            _lowerHint,
+            0,
+            0,
             _maxUpfrontFee,
             _minInterestRateChangePeriod
         );
     }
 
-    function clamped_setBatchManagerAnnualInterestRate(
-        uint128 _newAnnualInterestRate,
-        uint256 _upperHint,
-        uint256 _lowerHint,
-        uint256 _maxUpfrontFee
-    ) public { 
+    function clamped_setBatchManagerAnnualInterestRate(uint128 _newAnnualInterestRate, uint256 _maxUpfrontFee) public {
         _newAnnualInterestRate = _fix_interest_BM_rate(msg.sender, _newAnnualInterestRate); //NOTE fix clamping
-        BO_setBatchManagerAnnualInterestRate(_newAnnualInterestRate, _upperHint, _lowerHint, _maxUpfrontFee);
+        BO_setBatchManagerAnnualInterestRate(_newAnnualInterestRate, 0, 0, _maxUpfrontFee);
     }
 
-    // 
-
-
-    function _fix_interest_rate(uint128 input) internal returns (uint128) {
-        if (input > 250 * 1e16) input %= 2.5e18 + 1; //NOTE to better
-        if (input < 5e15) input + 5e15;
-        return input;
+    function clamped_adjustZombieTrove(
+        uint256 _collChange,
+        bool _isCollIncrease,
+        uint256 _boldChange,
+        bool _isDebtIncrease,
+        uint256 _maxUpfrontFee
+    ) public {
+        BO_adjustZombieTrove(
+            currentZombieTrove, _collChange, _isCollIncrease, _boldChange, _isDebtIncrease, 0, 0, _maxUpfrontFee
+        );
     }
 
-    function _fix_interest_BM_rate(address batchManager, uint128 _newAnnualInterestRate) internal returns (uint128) {
-        IBorrowerOperations.InterestBatchManager memory interestBM =
-            borrowerOperations.getInterestBatchManager(batchManager);
-        if (interestBM.maxInterestRate < _newAnnualInterestRate) _newAnnualInterestRate %= interestBM.maxInterestRate;
-        if (interestBM.minInterestRate > _newAnnualInterestRate) _newAnnualInterestRate = interestBM.minInterestRate + 1;
-        return _newAnnualInterestRate;
-        
+    function clamped_applyPendingDebt() public {
+        BO_applyPendingDebt(currentMixedTrove, 0, 0);
+    }
+
+    function clamped_zombie_applyPendingDebt() public {
+        BO_applyPendingDebt(currentZombieTrove, 0, 0);
+        t(false, "QnD");
+    }
+
+    /////////////////////////////////////////////////////////////////////////
+    function stateless_withdrawBold() public {
+        currentTrove = clamped_open_trove(10e18, 2000e18, 24e16);
+        BO_withdrawBold(currentTrove, 10e18, 2e18);
+        revert("stateless");
+    }
+
+    function stateless_withdrawColl() public {
+        currentTrove = clamped_open_trove(10e18, 2000e18, 23e16);
+        BO_withdrawColl(currentTrove, 1e18);
+        revert("stateless");
+    }
+
+    function stateless_createZombie(uint256 price) public {
+        clamped_open_trove(10e18, 2000e18, 25e16);
+        priceFeed.setRedemptionPrice(price);
+        collateralRegistry.redeemCollateral(1000e18, 10, 1e18);
+        revert("stateless");
+    }
+
+    function stateless_zombie_applyPendingDebt(
+        uint256 boldAmt,
+        bool increaseDebt,
+        uint256 maxFee,
+        uint256 redemtpionPrice
+    ) public {
+        clamped_open_trove(10e18, 2000e18, 25e16);
+        priceFeed.setRedemptionPrice(redemtpionPrice);
+        collateralRegistry.redeemCollateral(1000e18, 10, 1e18);
+        clamped_adjustZombieTrove(0, false, boldAmt, true, maxFee);
+        BO_applyPendingDebt(currentZombieTrove, 0, 0);
+        t(false, "QnD");
+        revert("stateless");
+    }
+
+    function stateless_adjustZombie() public {
+        clamped_open_trove(10e18, 2000e18, 25e16);
+        switch_trove(0);
+        priceFeed.setRedemptionPrice(2000e18);
+        collateralRegistry.redeemCollateral(1000e18, 10, 1e18);
+        findZombies();
+        clamped_adjustZombieTrove(0, false, 1100e18, true, 100e18);
+        revert("stateless");
+    }
+
+    function stateless_zombie_adjust_batch() public {
+        clamped_openTroveAndJoinInterestBatchManager(11e18, 2000e18);
+        priceFeed.setRedemptionPrice(20000e18);
+        collateralRegistry.redeemCollateral(500e18, 10, 1e18);
+        findZombies();
+        switch_zombie(0);
+        clamped_adjustZombieTrove(1e18, true, 10000e18, true, 1000e18);
+        revert("stateless");
+    }
+
+    function stateless_close_trove(uint256 amt) public {
+        clamped_open_trove(10e18, 2000e18, 25e16);
+        mintBold(amt);
+        BO_closeTrove();
+        revert('stateless');
     }
 }

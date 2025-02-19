@@ -7,7 +7,6 @@ import "./Interfaces/IAddressesRegistry.sol";
 import "./Interfaces/IBorrowerOperations.sol";
 import "./Interfaces/ITroveManager.sol";
 
-
 /**
  * The purpose of this contract is to hold WETH tokens for gas compensation:
  * https://github.com/liquity/bold/?tab=readme-ov-file#liquidation-gas-compensation

@@ -10,5 +10,4 @@ contract ERC20Token is ERC20("TOKEN", "TKN") {
     function mint(address receiver, uint256 amt) public {
         _mint(receiver, amt);
     }
-
 }

@@ -1,4 +1,3 @@
-
 // SPDX-License-Identifier: GPL-2.0
 pragma solidity ^0.8.0;
 
@@ -7,7 +6,6 @@ import {Properties} from "../../Properties.sol";
 import {vm} from "@chimera/Hevm.sol";
 
 abstract contract PriceFeedTarget is BaseTargetFunctions, Properties {
-
     function priceFeed_fetchPrice() public {
         priceFeed.fetchPrice();
     }

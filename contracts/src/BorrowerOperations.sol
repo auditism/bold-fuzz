@@ -24,7 +24,7 @@ contract BorrowerOperations is LiquityBase, AddRemoveManagers, IBorrowerOperatio
     ITroveManager public troveManager;
     address internal gasPoolAddress;
     ICollSurplusPool internal collSurplusPool;
-    IBoldToken internal boldToken;
+    IBoldToken public boldToken;
     // A doubly linked list of Troves, sorted by their collateral ratios
     ISortedTroves internal sortedTroves;
     // Wrapped ETH for liquidation reserve (gas compensation)
@@ -214,7 +214,7 @@ contract BorrowerOperations is LiquityBase, AddRemoveManagers, IBorrowerOperatio
             _collAmount,
             _boldAmount,
             _annualInterestRate,
-            address(0), //@note interestBatch
+            address(0), //@note interestBa
             0,
             0,
             _maxUpfrontFee,
@@ -671,7 +671,7 @@ contract BorrowerOperations is LiquityBase, AddRemoveManagers, IBorrowerOperatio
         ITroveManager troveManagerCached = troveManager;
         IActivePool activePoolCached = activePool;
         IBoldToken boldTokenCached = boldToken;
-        
+
         // --- Checks ---
 
         address owner = troveNFT.ownerOf(_troveId);
@@ -834,7 +834,7 @@ contract BorrowerOperations is LiquityBase, AddRemoveManagers, IBorrowerOperatio
         return interestBatchManagers[_account];
     }
 
-    function registerBatchManager( //wait no access contol ? 
+    function registerBatchManager(
         uint128 _minInterestRate,
         uint128 _maxInterestRate,
         uint128 _currentInterestRate,
@@ -1018,7 +1018,6 @@ contract BorrowerOperations is LiquityBase, AddRemoveManagers, IBorrowerOperatio
             _troveId, BatchId.wrap(_newBatchManager), vars.newBatch.annualInterestRate, _upperHint, _lowerHint
         );
     }
-
 
     function removeFromBatch(
         uint256 _troveId,
@@ -1331,7 +1330,7 @@ contract BorrowerOperations is LiquityBase, AddRemoveManagers, IBorrowerOperatio
         }
     }
 
-    function _checkTroveIsZombie(ITroveManager _troveManager, uint256 _troveId) internal view returns (bool) {
+    function _checkTroveIsZombie(ITroveManager _troveManager, uint256 _troveId) public view returns (bool) {
         ITroveManager.Status status = _troveManager.getTroveStatus(_troveId);
         return status == ITroveManager.Status.zombie;
     }

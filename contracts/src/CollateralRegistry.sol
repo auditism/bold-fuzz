@@ -8,7 +8,7 @@ import "./Interfaces/ITroveManager.sol";
 import "./Interfaces/IBoldToken.sol";
 import "./Dependencies/Constants.sol";
 import "./Dependencies/LiquityMath.sol";
-
+import {console} from "forge-std/console.sol";
 import "./Interfaces/ICollateralRegistry.sol";
 
 contract CollateralRegistry is ICollateralRegistry {
@@ -147,9 +147,11 @@ contract CollateralRegistry is ICollateralRegistry {
                 uint256 redeemAmount = _boldAmount * unbackedPortions[index] / totals.unbacked;
                 if (redeemAmount > 0) {
                     ITroveManager troveManager = getTroveManager(index);
+
                     uint256 redeemedAmount = troveManager.redeemCollateral(
                         msg.sender, redeemAmount, prices[index], redemptionRate, _maxIterationsPerCollateral
                     );
+
                     totals.redeemedAmount += redeemedAmount;
                 }
             }

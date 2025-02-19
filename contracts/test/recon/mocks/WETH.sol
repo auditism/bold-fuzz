@@ -5,8 +5,6 @@ import {ERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol"
 import {IWETH} from "src/Interfaces/IWETH.sol";
 
 contract Weth is IWETH, ERC20("Wrapped Ether", "WETH") {
-
-
     event Deposit(address indexed from, uint256 amount);
 
     event Withdrawal(address indexed to, uint256 amount);
@@ -22,7 +20,7 @@ contract Weth is IWETH, ERC20("Wrapped Ether", "WETH") {
 
         emit Withdrawal(msg.sender, amount);
 
-        msg.sender.call{value:amount}("");
+        msg.sender.call{value: amount}("");
     }
 
     function mint(address receiver, uint256 amt) public {
