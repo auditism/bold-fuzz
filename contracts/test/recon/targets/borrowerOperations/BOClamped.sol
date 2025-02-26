@@ -5,6 +5,7 @@ import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {BORaw} from "./borrowerOperationsRaw/BORaw.sol";
 import {BOHelpers} from "./BOHelpers.sol";
 import {IBorrowerOperations} from "src/Interfaces/IBorrowerOperations.sol";
+import {LatestTroveData} from "src/Types/LatestTroveData.sol";
 import {vm} from "@chimera/Hevm.sol";
 
 abstract contract BOClamped is BORaw, BOHelpers {
@@ -28,7 +29,6 @@ abstract contract BOClamped is BORaw, BOHelpers {
         IBorrowerOperations.OpenTroveAndJoinInterestBatchManagerParams memory _params =
             _return_batch_open_trove_params(collAmount, boldAmount);
         BO_openTroveAndJoinInterestBatchManager(_params);
-
     }
 
     // NOTE caller is owner, but should create option where caller is interestManager
@@ -63,7 +63,7 @@ abstract contract BOClamped is BORaw, BOHelpers {
         uint128 _minInterestRate,
         uint128 _maxInterestRate,
         uint128 _newAnnualInterestRate,
-        uint256 _maxUpfrontFee, //NOTE I CAN REMOVE THIS ?
+        uint256 _maxUpfrontFee,
         uint128 _minInterestRateChangePeriod
     ) public {
         address delegate = _return_random_User();
@@ -95,11 +95,27 @@ abstract contract BOClamped is BORaw, BOHelpers {
         bool _isCollIncrease,
         uint256 _boldChange,
         bool _isDebtIncrease,
-        uint256 _maxUpfrontFee
+        uint256 _maxUpfrontFee,
+        uint256 _maxIterationsPerCollateral,
+        uint256 _maxFeePercentage
     ) public {
+        macro_createZombie(_maxIterationsPerCollateral, _maxFeePercentage);
+        findZombies();
+        switch_zombie(0);
+        // BO_adjustZombieTrove(
+        //     currentZombieTrove, _collChange, _isCollIncrease, _boldChange, _isDebtIncrease, 0, 0, _maxUpfrontFee
+        // );
         BO_adjustZombieTrove(
-            currentZombieTrove, _collChange, _isCollIncrease, _boldChange, _isDebtIncrease, 0, 0, _maxUpfrontFee
+            currentZombieTrove,
+            0,
+            false,
+            2000e18,
+            true,
+            0,
+            0,
+            _maxUpfrontFee //mega clamping
         );
+        // t(false, 'QnD');
     }
 
     function clamped_applyPendingDebt() public {
@@ -108,68 +124,19 @@ abstract contract BOClamped is BORaw, BOHelpers {
 
     function clamped_zombie_applyPendingDebt() public {
         BO_applyPendingDebt(currentZombieTrove, 0, 0);
-        t(false, "QnD");
     }
 
-    /////////////////////////////////////////////////////////////////////////
-    function stateless_withdrawBold() public {
-        currentTrove = clamped_open_trove(10e18, 2000e18, 24e16);
-        BO_withdrawBold(currentTrove, 10e18, 2e18);
-        revert("stateless");
+    function macro_createZombie(uint256 _maxIterationsPerCollateral, uint256 _maxFeePercentage) public {
+        uint256 targetTrove = sortedTroves.getLast();
+        uint256 troveDebt = _return_trove_debt(targetTrove);
+        uint256 factor = troveDebt / 2000e18;
+        uint256 redemptionAmount = (factor * 2000e18);
+
+        collateralRegistry.redeemCollateral(redemptionAmount, _maxIterationsPerCollateral, _maxFeePercentage);
     }
 
-    function stateless_withdrawColl() public {
-        currentTrove = clamped_open_trove(10e18, 2000e18, 23e16);
-        BO_withdrawColl(currentTrove, 1e18);
-        revert("stateless");
-    }
-
-    function stateless_createZombie(uint256 price) public {
-        clamped_open_trove(10e18, 2000e18, 25e16);
-        priceFeed.setRedemptionPrice(price);
-        collateralRegistry.redeemCollateral(1000e18, 10, 1e18);
-        revert("stateless");
-    }
-
-    function stateless_zombie_applyPendingDebt(
-        uint256 boldAmt,
-        bool increaseDebt,
-        uint256 maxFee,
-        uint256 redemtpionPrice
-    ) public {
-        clamped_open_trove(10e18, 2000e18, 25e16);
-        priceFeed.setRedemptionPrice(redemtpionPrice);
-        collateralRegistry.redeemCollateral(1000e18, 10, 1e18);
-        clamped_adjustZombieTrove(0, false, boldAmt, true, maxFee);
-        BO_applyPendingDebt(currentZombieTrove, 0, 0);
-        t(false, "QnD");
-        revert("stateless");
-    }
-
-    function stateless_adjustZombie() public {
-        clamped_open_trove(10e18, 2000e18, 25e16);
-        switch_trove(0);
-        priceFeed.setRedemptionPrice(2000e18);
-        collateralRegistry.redeemCollateral(1000e18, 10, 1e18);
-        findZombies();
-        clamped_adjustZombieTrove(0, false, 1100e18, true, 100e18);
-        revert("stateless");
-    }
-
-    function stateless_zombie_adjust_batch() public {
-        clamped_openTroveAndJoinInterestBatchManager(11e18, 2000e18);
-        priceFeed.setRedemptionPrice(20000e18);
-        collateralRegistry.redeemCollateral(500e18, 10, 1e18);
-        findZombies();
-        switch_zombie(0);
-        clamped_adjustZombieTrove(1e18, true, 10000e18, true, 1000e18);
-        revert("stateless");
-    }
-
-    function stateless_close_trove(uint256 amt) public {
-        clamped_open_trove(10e18, 2000e18, 25e16);
-        mintBold(amt);
-        BO_closeTrove();
-        revert('stateless');
+    function _return_trove_debt(uint256 troveId) internal view returns (uint256) {
+        LatestTroveData memory trove = troveManager.getLatestTroveData(troveId);
+        return trove.entireDebt;
     }
 }

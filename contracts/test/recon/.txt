@@ -5,7 +5,146 @@
             _currentInterestRate > _maxInterestRate ? _currentInterestRate % _maxInterestRate : _currentInterestRate; //is this ok ?
         _currentInterestRate = _currentInterestRate < _minInterestRate ? _minInterestRate + 1 : _currentInterestRate;
 
+
+    function test_adjustZombie() public {
+        switch_user(0);
+        mintTokenToAll(100000e18);
+        mintWeth(1000e18);
+        priceFeed_setPrice(2000e18);
+        clamped_open_trove(10e18, 2000e18, 25e16);
+        switch_trove(0);
+        priceFeed_setRedemptionPrice(2000e18);
+        collateralRegistry.redeemCollateral(1000e18, 10, 1e18);
+        findZombies();
+        clamped_adjustZombieTrove(1e18, true, 10000e18, true, 100e18);
+    }
+
+        function stateless_createZombie(uint256 price) public {
+        clamped_open_trove(10e18, 2000e18, 25e16);
+        priceFeed.setRedemptionPrice(price);
+        collateralRegistry.redeemCollateral(1000e18, 10, 1e18);
+        revert("stateless");
+    }
+
+        function stateless_withdrawBold() public {
+        currentTrove = clamped_open_trove(10e18, 2000e18, 24e16);
+        BO_withdrawBold(currentTrove, 10e18, 2e18);
+        revert("stateless");
+    }
+
+    function stateless_withdrawColl() public {
+        currentTrove = clamped_open_trove(10e18, 2000e18, 23e16);
+        BO_withdrawColl(currentTrove, 1e18);
+        revert("stateless");
+    }
+
+        function stateless_adjustZombie() public {
+        clamped_open_trove(10e18, 2000e18, 25e16);
+        switch_trove(0);
+        priceFeed.setRedemptionPrice(2000e18);
+        collateralRegistry.redeemCollateral(1000e18, 10, 1e18);
+        findZombies();
+        clamped_adjustZombieTrove(0, false, 1100e18, true, 100e18);
+        revert("stateless");
+    }
+
+        function stateless_zombie_adjust_batch() public {
+        clamped_openTroveAndJoinInterestBatchManager(11e18, 2000e18);
+        priceFeed.setRedemptionPrice(20000e18);
+        collateralRegistry.redeemCollateral(500e18, 10, 1e18);
+        findZombies();
+        switch_zombie(0);
+        clamped_adjustZombieTrove(1e18, true, 10000e18, true, 1000e18);
+        revert("stateless");
+    }
+
+        function stateless_close_trove(uint256 amt) public {
+        clamped_open_trove(10e18, 2000e18, 25e16);
+        mintBold(amt);
+        BO_closeTrove();
+        revert("stateless");
+    }
+
+////////////////////////////////////////
+
+    // bool deployed;
+    // function deployment(
+    //     uint256 ccr,
+    //     uint256 mcr,
+    //     uint256 scr,
+    //     uint256 liquidationPenaltySP,
+    //     uint256 liquidationPenaltyRedistribution
+    // ) public {
+    //     if (!deployed) {
+    //         (ccr, mcr, scr, liquidationPenaltySP, liquidationPenaltyRedistribution) =
+    //             _fix_deploy_args(ccr, mcr, scr, liquidationPenaltySP, liquidationPenaltyRedistribution);
+    //         deploy(owner, ccr, mcr, scr, liquidationPenaltySP, liquidationPenaltyRedistribution);
+    //         deployed = true;
+
+    //     }
+    // }
+
+/////////////////////////////////////////
+
+    function stateless_zombie_applyPendingDebt(
+        uint256 boldAmt,
+        bool increaseDebt,
+        uint256 maxFee,
+        uint256 redemtpionPrice
+    ) public {
+        clamped_open_trove(10e18, 2000e18, 25e16);
+        priceFeed.setRedemptionPrice(redemtpionPrice);
+        collateralRegistry.redeemCollateral(1000e18, 10, 1e18);
+        clamped_adjustZombieTrove(0, false, boldAmt, true, maxFee);
+        BO_applyPendingDebt(currentZombieTrove, 0, 0);
+        t(false, "QnD");
+        revert("stateless");
+    }
+
+////////////////////////////////////////
+
+
+//     mapping(address => BatchDebt) memory batchInterest;
+    
+//     uint256 len = troveManager.getTroveIdsCount();
+
+
+
+//     for (uint256 i; i < len; i++) {
+//         int256 trove = troveManager.getTroveFromTroveIdsArray(i);
+//         LatestTroveData troveData = troveManager.Troves(trove);
         
+
+//         if (troveData.batchManager == address(0)) continue;
+        
+//         LatestBatchData memory batchData = troveManager.getLatestBatchData(troveData.batchManager);
+        
+        
+//         batchDebt[batchManager].sumOfShares += 
+//     }
+
+//     // 2. Prepare results for all batches
+//     BatchDebtCheck[] memory results = new BatchDebtCheck[](batchAddresses.length);
+    
+//     for (uint256 j = 0; j < batchAddresses.length; j++) {
+//         address batchAddr = batchAddresses[j];
+//         LatestBatchData memory bd;
+//         _getLatestBatchData(batchAddr, bd);
+
+//         results[j] = BatchDebtCheck({
+//             batchManager: batchAddr,
+//             calculatedDebt: batchDebtSum[batchAddr],
+//             recordedDebt: bd.entireDebtWithoutRedistribution,
+//             isValid: batchDebtSum[batchAddr] == bd.entireDebtWithoutRedistribution
+//         });
+//     }
+
+//     return results;
+// }
+//     }
+
+
+/////////////////////////////////////////
 
         // SPDX-License-Identifier: GPL-2.0
 pragma solidity ^0.8.0;

@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {BaseSetup} from "@chimera/BaseSetup.sol";
 import {console} from "forge-std/console.sol";
 
-import {Deployer} from "./Deployer.sol";
+import {Deployer} from "./deployment/Deployer.sol";
 import {ERC20Token} from "./mocks/ERC20.sol";
 
 import {IAddressesRegistry} from "src/Interfaces/IAddressesRegistry.sol";

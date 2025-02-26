@@ -473,10 +473,10 @@ contract TroveManager is LiquityBase, ITroveManager, ITroveEvents {
             uint256 troveId = _troveArray[i];
 
             // Skip non-liquidatable troves
-            if (!_isActiveOrZombie(Troves[troveId].status)) continue;
+            if (!_isActiveOrZombie(Troves[troveId].status)) continue; //@note must be active or zombie
 
             uint256 ICR = getCurrentICR(troveId, _price);
-
+            //@note MCR = maintenance cr
             if (ICR < MCR) {
                 LiquidationValues memory singleLiquidation;
                 LatestTroveData memory trove;
@@ -765,6 +765,7 @@ contract TroveManager is LiquityBase, ITroveManager, ITroveEvents {
 
             // Skip if ICR < 100%, to make sure that redemptions don’t decrease the CR of hit Troves
             if (getCurrentICR(singleRedemption.troveId, _price) < _100pct) {
+                //@note coll * price / debt < 1e18
                 singleRedemption.troveId = nextUserToCheck;
                 singleRedemption.isZombieTrove = false;
                 continue;
@@ -1191,7 +1192,7 @@ contract TroveManager is LiquityBase, ITroveManager, ITroveEvents {
         (uint256 price,) = priceFeed.fetchRedemptionPrice();
         // It's redeemable if the TCR is above the shutdown threshold, and branch has not been shut down
         bool redeemable = _getTCR(price) >= SCR && shutdownTime == 0;
-
+        //@note scr 1.5
         return (unbackedPortion, price, redeemable);
     }
 

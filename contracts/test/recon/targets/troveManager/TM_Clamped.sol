@@ -13,10 +13,10 @@ abstract contract TM_Clamped is TM_Raw {
         TM_batchLiquidateTroves(trovesArray);
     }
 
-    // function macro_batchLiquidateTroves(uint256 price) public {
-    //     priceFeed.setPrice(price); // necesssary ?
-    //     clamped_batchLiquidateTroves();
-    // }
+    function macro_batchLiquidateTroves(uint256 price) public {
+        priceFeed.setPrice(price); // necesssary ?
+        clamped_batchLiquidateTroves();
+    }
 
     function _return_troves_array() private returns (uint256[] memory trovesArray) {
         uint256 length = randomUnit % activeTroves.length;

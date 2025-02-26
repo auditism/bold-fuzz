@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import {Properties} from "../Properties.sol";
 import {IBorrowerOperations} from "src/Interfaces/IBorrowerOperations.sol";
+import {LatestTroveData} from "src/Types/LatestTroveData.sol";
 
 abstract contract Helpers is Properties {
     uint256 constant MIN_LIQUIDATION_PENALTY_SP = 5e16;
@@ -42,4 +43,9 @@ abstract contract Helpers is Properties {
         uint256 availableRange = MAX_LIQUIDATION_PENALTY_REDISTRIBUTION - minRedistribution;
         liquidationPenaltyRedistribution = minRedistribution + (liquidationPenaltyRedistribution % (availableRange + 1));
     }
+
+    // function _return_trove_debt(uint256 troveId) internal view returns(uint256) {
+    //     LatestTroveData memory trove = troveManager.getLatestTroveData(troveId);
+    //     return trove.entireDebt;
+    // }
 }

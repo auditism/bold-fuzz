@@ -8,16 +8,18 @@ import {TroveChange} from "src/Types/TroveChange.sol";
 import {vm} from "@chimera/Hevm.sol";
 
 abstract contract TM_Raw is BaseTargetFunctions, Properties {
-    function TM_batchLiquidateTroves(uint256[] memory _troveArray) public {
+    function TM_batchLiquidateTroves(uint256[] memory _troveArray) public beforeAfter {
         troveManager.batchLiquidateTroves(_troveArray);
     }
 
-    function TM_urgentRedemption(uint256 _boldAmount, uint256[] memory _troveIds, uint256 _minCollateral) public {
+    function TM_urgentRedemption(uint256 _boldAmount, uint256[] memory _troveIds, uint256 _minCollateral)
+        public
+        beforeAfter
+    {
         troveManager.urgentRedemption(_boldAmount, _troveIds, _minCollateral);
     }
 
-    function TM_getUnbackedPortionPriceAndRedeemability() public {
+    function TM_getUnbackedPortionPriceAndRedeemability() public beforeAfter {
         (,, bool redeemable) = troveManager.getUnbackedPortionPriceAndRedeemability();
     }
-
 }

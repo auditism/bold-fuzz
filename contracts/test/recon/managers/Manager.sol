@@ -52,7 +52,7 @@ abstract contract Manager is BaseTargetFunctions, Properties, Modifiers, Helpers
 
     function switchBatchManger(uint256 index) public {
         index %= batchManagers.length;
-        currentBatchManager =  batchManagers[index];
+        currentBatchManager = batchManagers[index];
     }
 
     function mintBold(uint256 amt) public onlyBO {
@@ -66,6 +66,10 @@ abstract contract Manager is BaseTargetFunctions, Properties, Modifiers, Helpers
 
     function pushTime() public {
         vm.warp(timestamp + 10 days);
+    }
+
+    function switchUser() public {
+        vm.prank(currentUser);
     }
 
     function findZombies() public {
